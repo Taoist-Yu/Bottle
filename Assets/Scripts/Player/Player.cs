@@ -6,40 +6,44 @@ using Object = UnityEngine.Object;
 
 public class Player : MonoBehaviour {
 
-	public enum BulletType {
-		small = 0,
-		big = 1,
-		bounce = 2,
-		fission = 3,
-		Number = 4
-	};
-	BulletType bulletType;   //定义当前子弹类型
 	KeyCode attackKeyCode;       //代表攻击按键
 
 	//定义子弹
-	public GameObject[] bulletArray;    //子弹数组
+	BulletType bulletType;               //定义当前子弹类型
+	public GameObject[] bulletArray;     //子弹数组
 	private GameObject Bullet;           //当前子弹
+	public int residueCount;            //剩余次数（只对特殊子弹有效）
 
 	//定义玩家属性变量，如生命等
 	private int heart = 3;
 
-	//定义玩家图片
+	//定义图片，音效，特效
 	public Sprite red_player_sprite;
 	public Sprite blue_player_sprite;
+	public GameObject ExploPrefab;
+	public GameObject ExploPrefabE;
 
 	//定义子弹发射器
 	BulletEmitter bulletEmitter;
 
-	//定义后坐力大小与运动速度上限常量
-	private const float lineRecoil = 200.0f;
-	private const float AngleRecoil = 30.0f;
-	private const float maxVelocity = 15.0f;
-	private const float maxAngleVelocity = 1000.0f;
+	//物理相关
+	private const float lineRecoil = 220.0f;
+	private const float angleRecoil = 30.0f;
+	private float maxVelocity;
+	private float maxAngleVelocity;
+	private const float normalMaxVelocity = 10.0f;
+	private const float normalMaxAngleVelocity = 1000.0f;
+	private const float netMaxVelocity = 2.5f;
+	private const float netMaxAngleVelocity = 100.0f;
+	private const float normalDrag = 0.3f;
+	private const float netDrag = 0.1f;
+
+	//计时器相关
+	private float shieldTimeVal = 0.11f;
 
 	//定义组件相关变量
 	private Rigidbody2D rb2d;
 	private SpriteRenderer sr;
-	private GameObject test;
 
 	private void Awake()
 	{
@@ -49,6 +53,11 @@ public class Player : MonoBehaviour {
 		sr = GetComponent<SpriteRenderer>();
 
 		bulletArray = new GameObject[(int)BulletType.Number];
+
+		ExploPrefab = (GameObject)Resources.Load("Prefabs/Effect/Explo");
+		ExploPrefabE = (GameObject)Resources.Load("Prefabs/Effect/ExploE");
+		red_player_sprite = Resources.Load<Sprite>("Sprites/RedPlayer");
+		blue_player_sprite = Resources.Load<Sprite>("Sprites/BluePlayer");
 
 	}
 
@@ -75,22 +84,53 @@ public class Player : MonoBehaviour {
 		bulletType = BulletType.small;
 		Bullet = bulletArray[(int)BulletType.small];
 
+		//设置物理属性
+		maxVelocity = normalMaxVelocity;
+		maxAngleVelocity = normalMaxAngleVelocity;
+
 	}
 	
 	// Update is called once per frame
 	void Update ()
 	{
+		//获取输入
 		if (Input.GetKeyDown(attackKeyCode)) {
 			Attack();
 		}
+		//被攻击后短时间无敌
+		if (shieldTimeVal < 0.1f) {
+			shieldTimeVal += Time.deltaTime;
+		}
+
+		//速度上限
+		if (rb2d.velocity.magnitude > maxVelocity)
+		{
+			rb2d.velocity = rb2d.velocity / rb2d.velocity.magnitude * maxVelocity;
+		}
+		if (rb2d.angularVelocity > maxAngleVelocity)
+		{
+			rb2d.angularVelocity = maxAngleVelocity;
+		}
+		else if (rb2d.angularVelocity < -maxAngleVelocity)
+		{
+			rb2d.angularVelocity = -maxAngleVelocity;
+		}
+
+	}
+
+	//受力方法
+	private void ActiveForce(Force force)
+	{
+		rb2d.AddForce(force.DirVec * force.lineForce);
+		rb2d.AddTorque(-force.angleForce);
 	}
 
 	//攻击方法
 	private void Attack()
 	{
 		//产生后坐力
-		rb2d.AddForce(Quaternion.AngleAxis(20,Vector3.forward) * transform.right * -lineRecoil);
-		rb2d.AddTorque(-AngleRecoil);
+		ActiveForce(new Force(lineRecoil, angleRecoil, Quaternion.AngleAxis(20, Vector3.forward) * transform.right * -1));
+
 		//速度上限
 		if (rb2d.velocity.magnitude > maxVelocity) {
 			rb2d.velocity = rb2d.velocity / rb2d.velocity.magnitude * maxVelocity;
@@ -106,14 +146,23 @@ public class Player : MonoBehaviour {
 		bulletEmitter.EmitBullet(bulletType,Bullet);
 	}
 
-	//受击方法
-	private void BeAttack()
+	//改变血量方法
+	private void ChangeHeart(int delta)
 	{
-		heart -= 1;
+		//短时间无敌
+		if (shieldTimeVal < 0.1f && delta < 0)
+			return;
+		if (delta < 0)
+			shieldTimeVal = 0;
+
+		heart += delta;
 		if (heart == 0) {
 			//游戏结束
-			Debug.Log("功能尚未完善");
+			Die();
 		}
+		if (heart > 3)
+			heart = 3;
+
 		switch (heart)
 		{
 			case 3:
@@ -137,75 +186,74 @@ public class Player : MonoBehaviour {
 		{
 			case "BluePlayer":
 				bulletArray[(int)BulletType.small] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
-				bulletArray[(int)BulletType.big] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
-				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
-				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
+				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
+				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/BounceBullet");
+				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/FissionBullet");
 				break;
 			case "RedPlayer":
 				bulletArray[(int)BulletType.small] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
-				bulletArray[(int)BulletType.big] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
-				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
-				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
+				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
+				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Red/BounceBullet");
+				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Red/FissionBullet");
 				break;
 		}
-
 	}
 
+	//重置当前子弹为小子弹
+	public void ResetBullet()
+	{
+		bulletType = BulletType.small;
+		Bullet = bulletArray[(int)bulletType];
+	}
+	//设置子弹类型为弹性子弹
+	private void SetBounce()
+	{
+		bulletType = BulletType.bounce;
+		Bullet = bulletArray[(int)bulletType];
+		residueCount = 1;
+	}
+	//设置子弹类型为分裂弹
+	private void SetFission()
+	{
+		bulletType = BulletType.fission;
+		Bullet = bulletArray[(int)bulletType];
+		residueCount = 2;
+	}
+	//设置子弹类型为闪电
+	private void SetThunder()
+	{
+		bulletType = BulletType.Thunder;
+		Bullet = bulletArray[(int)bulletType];
+		residueCount = 5;
+	}
+
+	//蜘蛛网相关
+	private void OnNetEnter()
+	{
+		rb2d.angularDrag = netDrag;
+		rb2d.drag = netDrag;
+
+		maxVelocity = netMaxVelocity;
+		maxAngleVelocity = netMaxAngleVelocity;
+
+	}
+	private void OnNetExit()
+	{
+		rb2d.angularDrag = normalDrag;
+		rb2d.drag = normalDrag;
+
+		maxVelocity = normalMaxVelocity;
+		maxAngleVelocity = normalMaxAngleVelocity;
+	}
+
+	//死亡方法
+	private void Die()
+	{
+		//爆炸效果
+		Instantiate(ExploPrefab, transform.position, transform.rotation);
+		Instantiate(ExploPrefabE, transform.position, transform.rotation);
+		//销毁玩家
+		Destroy(gameObject);
+	}
 }
 
-class BulletEmitter : Object
-{
-	Player player;
-	private GameObject bulletInstant;
-
-	public BulletEmitter(Player _player)
-	{
-		this.player = _player;
-	}
-
-	public void EmitBullet(Player.BulletType bullet_type,GameObject bullet)
-	{
-		switch (bullet_type)
-		{
-			case Player.BulletType.small:
-				EmitSmallBullet(bullet);
-				break;
-			case Player.BulletType.big:
-				EmitBigBullet(bullet);
-				break;
-			case Player.BulletType.bounce:
-				EmitBounceBullet(bullet);
-				break;
-			case Player.BulletType.fission:
-				EmitFissionBullet(bullet);
-				break;
-		}
-	}
-
-	private void EmitSmallBullet(GameObject bullet)
-	{
-		if (bulletInstant != null) {
-			DestroyImmediate(bulletInstant);
-		}
-
-		bulletInstant = Instantiate(bullet,
-						player.transform.position+0.2f*player.transform.right,
-						Quaternion.Euler(player.transform.eulerAngles + new Vector3(0,0,180)));
-	}
-
-	private void EmitBigBullet(GameObject bullet)
-	{
-		Debug.Log("该功能尚未完善");
-	}
-
-	private void EmitBounceBullet(GameObject bullet)
-	{
-		Debug.Log("该功能尚未完善");
-	}
-
-	private void EmitFissionBullet(GameObject bullet)
-	{
-		Debug.Log("该功能尚未完善");
-	}
-
-}

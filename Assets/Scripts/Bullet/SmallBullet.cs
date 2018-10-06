@@ -4,8 +4,7 @@ using UnityEngine;
 
 public class SmallBullet : MonoBehaviour {
 
-	public Sprite blue_sprite;
-	public Sprite red_sprite;
+	public Sprite sprite;
 
 	private SpriteRenderer sr;
 
@@ -17,20 +16,12 @@ public class SmallBullet : MonoBehaviour {
 	}
 
 	// Use this for initialization
-	void Start () {
+	void Start()
+	{
 		//设置图片精灵
-		switch (tag)
-		{
-			case "BlueBullet":
-				sr.sprite = blue_sprite;
-				break;
-			case "RedBullet":
-				sr.sprite = red_sprite;
-				break;
-		}
-
+		sr.sprite = sprite;
 	}
-	
+
 	// Update is called once per frame
 	void Update () {
 		transform.Translate(Quaternion.AngleAxis(20,Vector3.forward) * Vector3.left * moveSpeed * Time.deltaTime);
@@ -38,6 +29,7 @@ public class SmallBullet : MonoBehaviour {
 
 	private void OnTriggerEnter2D(Collider2D other)
 	{
+
 		switch (other.tag)
 		{
 			case "Wall":
@@ -45,12 +37,14 @@ public class SmallBullet : MonoBehaviour {
 				break;
 			case "BluePlayer":
 				if (tag == "BlueBullet") return;
-				other.SendMessage("BeAttack");
+				other.SendMessage("ChangeHeart",-1);
+				other.SendMessage("ActiveForce", new Force(60.0f, 15.0f, -transform.right));
 				Destroy(gameObject);
 				break;
 			case "RedPlayer":
 				if (tag == "RedBullet") return;
-				other.SendMessage("BeAttack");
+				other.SendMessage("ChangeHeart",-1);
+				other.SendMessage("ActiveForce", new Force(60.0f, 15.0f, -transform.right));
 				Destroy(gameObject);
 				break;
 		}

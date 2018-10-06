@@ -37,8 +37,8 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1338443987609258}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.62, y: 2.24, z: -0.095703125}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -71,7 +71,7 @@ CapsuleCollider2D:
   m_GameObject: {fileID: 1338443987609258}
   m_Enabled: 1
   m_Density: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: ac8d7279756503b42a4c888532a28ba0, type: 2}
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
@@ -89,8 +89,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3b94b14484526a4eb3a3fa5a2d71ff4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  blue_sprite: {fileID: 21300000, guid: 552b96c8228738b4cad1a4309b3e4873, type: 3}
-  red_sprite: {fileID: 21300000, guid: dbe4b7fa2350a3b42b010c772b08d156, type: 3}
+  sprite: {fileID: 21300000, guid: dbe4b7fa2350a3b42b010c772b08d156, type: 3}
 --- !u!212 &212722503655080222
 SpriteRenderer:
   m_ObjectHideFlags: 1
