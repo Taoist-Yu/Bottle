@@ -6,8 +6,6 @@ using Object = UnityEngine.Object;
 
 public class AIPlayer : MonoBehaviour {
 
-	KeyCode attackKeyCode;       //代表攻击按键
-
 	//定义子弹
 	BulletType bulletType;               //定义当前子弹类型
 	public GameObject[] bulletArray;     //子弹数组
@@ -22,6 +20,10 @@ public class AIPlayer : MonoBehaviour {
 	public Sprite blue_player_sprite;
 	public GameObject ExploPrefab;
 	public GameObject ExploPrefabE;
+	private AudioClip exploClip;
+	private AudioClip shootClip;
+	private AudioClip impactClip;
+	private AudioClip underAttackClip;
 
 	//定义子弹发射器
 	AIBulletEmitter bulletEmitter;
@@ -41,6 +43,7 @@ public class AIPlayer : MonoBehaviour {
 	//计时器相关
 	private float shieldTimeVal = 0.11f;
 	private float attackTimeVal = 1.0f;
+	private float avoidTimeVal = 0.3f;
 
 	//定义组件相关变量
 	private Rigidbody2D rb2d;
@@ -60,6 +63,16 @@ public class AIPlayer : MonoBehaviour {
 		red_player_sprite = Resources.Load<Sprite>("Sprites/RedPlayer");
 		blue_player_sprite = Resources.Load<Sprite>("Sprites/BluePlayer");
 
+		exploClip = (AudioClip)Resources.Load("Audio/explode");
+		impactClip = (AudioClip)Resources.Load("Audio/Impact");
+		shootClip = (AudioClip)Resources.Load("Audio/Shoot");
+		underAttackClip = (AudioClip)Resources.Load("Audio/UnderAttack");
+
+	}
+
+	private void OnEnable()
+	{
+		PlayerManager.TimeLimitEvent += ChangeHeart;
 	}
 
 	// Use this for initialization
@@ -70,11 +83,9 @@ public class AIPlayer : MonoBehaviour {
 		switch (tag)
 		{
 			case "BluePlayer":
-				attackKeyCode = KeyCode.Q;
 				sr.sprite = blue_player_sprite;
 				break;
 			case "RedPlayer":
-				attackKeyCode = KeyCode.UpArrow;
 				sr.sprite = red_player_sprite;
 				break;
 		}
@@ -91,17 +102,81 @@ public class AIPlayer : MonoBehaviour {
 		maxAngleVelocity = normalMaxAngleVelocity;
 
 	}
-	
+
+	//射线检测玩家,若检测到则发动攻击
+	void AIRayCast()
+	{
+		Ray2D ray = new Ray2D();
+		ray.direction = Quaternion.AngleAxis(20,Vector3.forward) * transform.right;
+		ray.origin = transform.position;
+
+		//射线检测信息数组
+		RaycastHit2D[] hitArray =  Physics2D.RaycastAll(ray.origin, ray.direction);
+
+		bool isPlayerInRay = false;   //是否检测到玩家
+		foreach (RaycastHit2D hit in hitArray)
+		{
+			if (hit.collider.tag == "BluePlayer")
+				isPlayerInRay = true;
+		}
+
+		if (isPlayerInRay == true)
+		{
+			attackTimeVal = UnityEngine.Random.Range(1, 3);
+			Attack();
+		}
+
+	}
+
+	//射线检测到被子弹瞄准则闪避
+	void AvoidAttack()
+	{
+		if (avoidTimeVal > 0) return;
+		GameObject[] bullets = GameObject.FindGameObjectsWithTag("BlueBullet");
+		foreach (GameObject b in bullets)
+		{
+			Ray2D ray = new Ray2D();
+			ray.direction = Quaternion.AngleAxis(20, Vector3.forward) * b.transform.right * -1;
+			ray.origin = b.transform.position;
+
+			//射线检测信息数组
+			RaycastHit2D[] hitArray = Physics2D.RaycastAll(ray.origin, ray.direction);
+		
+			bool isPlayerInRay = false;   //是否检测到玩家
+			foreach (RaycastHit2D hit in hitArray)
+			{
+				if (hit.collider.tag == "RedPlayer")
+					isPlayerInRay = true;
+			}
+
+			if (isPlayerInRay == true)
+			{
+				attackTimeVal = UnityEngine.Random.Range(1, 3);
+				avoidTimeVal = 0.3f;//闪避冷却
+				Attack();
+			}
+		}
+	}
+
 	// Update is called once per frame
 	void Update ()
 	{
-		//获取输入
+		//AI控制代码
+		//闪避CD计时器的更新
+		if (avoidTimeVal > 0) {
+			avoidTimeVal -= Time.deltaTime;
+		}
+		//AI的日常发癫
 		attackTimeVal -= Time.deltaTime;
 		if(attackTimeVal <= 0)
 		{
-			attackTimeVal = UnityEngine.Random.Range(0, 3);
+			attackTimeVal = UnityEngine.Random.Range(0, 2);
 			Attack();
 		}
+		//AI射线检测到玩家后攻击
+		AIRayCast();
+		//检测是否即将受击，规避子弹
+		AvoidAttack();
 
 		//被攻击后短时间无敌
 		if (shieldTimeVal < 0.1f) {
@@ -136,7 +211,6 @@ public class AIPlayer : MonoBehaviour {
 	{
 		//产生后坐力
 		ActiveForce(new Force(lineRecoil, angleRecoil, Quaternion.AngleAxis(20, Vector3.forward) * transform.right * -1));
-
 		//速度上限
 		if (rb2d.velocity.magnitude > maxVelocity) {
 			rb2d.velocity = rb2d.velocity / rb2d.velocity.magnitude * maxVelocity;
@@ -148,6 +222,8 @@ public class AIPlayer : MonoBehaviour {
 		{
 			rb2d.angularVelocity = -maxAngleVelocity;
 		}
+		//产生音效
+		transform.parent.SendMessage("AudioPlay", shootClip);
 		//发射子弹
 		bulletEmitter.EmitBullet(bulletType,Bullet);
 	}
@@ -158,8 +234,12 @@ public class AIPlayer : MonoBehaviour {
 		//短时间无敌
 		if (shieldTimeVal < 0.1f && delta < 0)
 			return;
-		if (delta < 0)
+		if (delta < 0) { 
 			shieldTimeVal = 0;
+			if (heart != 1) 
+				transform.parent.SendMessage("AudioPlay", underAttackClip);
+		}
+			
 
 		heart += delta;
 		if (heart == 0) {
@@ -258,7 +338,17 @@ public class AIPlayer : MonoBehaviour {
 		//爆炸效果
 		Instantiate(ExploPrefab, transform.position, transform.rotation);
 		Instantiate(ExploPrefabE, transform.position, transform.rotation);
+		//爆炸音效
+		transform.parent.SendMessage("AudioPlay", exploClip);
+		//游戏结束
+		GameMode.GameOver();
 		//销毁玩家
 		Destroy(gameObject);
 	}
+
+	private void OnCollisionEnter2D(Collision2D collision)
+	{
+		transform.parent.SendMessage("AudioPlay", impactClip);
+	}
+
 }

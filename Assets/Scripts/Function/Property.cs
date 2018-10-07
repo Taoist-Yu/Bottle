@@ -21,7 +21,7 @@ public class Property : MonoBehaviour {
 	private SpriteRenderer sr;
 
 	//定时器相关
-	private float timeVal = 0.0f;
+	private float timeVal = 5.0f;
 
 	//随机数相关
 	private System.Random rand;

@@ -8,7 +8,7 @@ public class SmallBullet : MonoBehaviour {
 
 	private SpriteRenderer sr;
 
-	private const float moveSpeed = 10.0f;
+	private const float moveSpeed = 15.0f;
 
 	private void Awake()
 	{

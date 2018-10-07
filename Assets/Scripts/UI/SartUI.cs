@@ -9,7 +9,7 @@ public class SartUI : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		Debug.Log("The sumber of scenes is " + SceneManager.sceneCountInBuildSettings);
+
 	}
 	
 	// Update is called once per frame
@@ -27,19 +27,20 @@ public class SartUI : MonoBehaviour {
 	{
 		isDouble = true;
 		SetGameMode();
-		SceneManager.LoadScene(0);
+		SceneManager.LoadScene(1);
 	}
 
 	public void OnSingle()
 	{
 		isDouble = false;
 		SetGameMode();
-		SceneManager.LoadScene(0);
+		SceneManager.LoadScene(1);
 	}
 
 	void SetGameMode()
 	{
 		GameMode.isDouble = isDouble;
+		GameMode.volume = UIController.AS.volume;
 	}
 
 }

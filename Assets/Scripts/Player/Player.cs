@@ -22,6 +22,10 @@ public class Player : MonoBehaviour {
 	public Sprite blue_player_sprite;
 	public GameObject ExploPrefab;
 	public GameObject ExploPrefabE;
+	private AudioClip exploClip;
+	private AudioClip shootClip;
+	private AudioClip impactClip;
+	private AudioClip underAttackClip;
 
 	//定义子弹发射器
 	BulletEmitter bulletEmitter;
@@ -44,21 +48,32 @@ public class Player : MonoBehaviour {
 	//定义组件相关变量
 	private Rigidbody2D rb2d;
 	private SpriteRenderer sr;
+	private AudioSource AS;
 
 	private void Awake()
 	{
-
 		bulletEmitter = new BulletEmitter(this);
 		rb2d = GetComponent<Rigidbody2D>();
 		sr = GetComponent<SpriteRenderer>();
 
 		bulletArray = new GameObject[(int)BulletType.Number];
 
+		//加载资源
 		ExploPrefab = (GameObject)Resources.Load("Prefabs/Effect/Explo");
 		ExploPrefabE = (GameObject)Resources.Load("Prefabs/Effect/ExploE");
 		red_player_sprite = Resources.Load<Sprite>("Sprites/RedPlayer");
 		blue_player_sprite = Resources.Load<Sprite>("Sprites/BluePlayer");
 
+		exploClip = (AudioClip)Resources.Load("Audio/explode");
+		impactClip = (AudioClip)Resources.Load("Audio/Impact");
+		shootClip = (AudioClip)Resources.Load("Audio/Shoot");
+		underAttackClip = (AudioClip)Resources.Load("Audio/UnderAttack");
+
+	}
+
+	private void OnEnable()
+	{
+		PlayerManager.TimeLimitEvent += ChangeHeart;
 	}
 
 	// Use this for initialization
@@ -89,16 +104,18 @@ public class Player : MonoBehaviour {
 		maxAngleVelocity = normalMaxAngleVelocity;
 
 	}
-	
+
 	// Update is called once per frame
-	void Update ()
+	void Update()
 	{
 		//获取输入
-		if (Input.GetKeyDown(attackKeyCode)) {
+		if (Input.GetKeyDown(attackKeyCode))
+		{
 			Attack();
 		}
 		//被攻击后短时间无敌
-		if (shieldTimeVal < 0.1f) {
+		if (shieldTimeVal < 0.1f)
+		{
 			shieldTimeVal += Time.deltaTime;
 		}
 
@@ -130,7 +147,6 @@ public class Player : MonoBehaviour {
 	{
 		//产生后坐力
 		ActiveForce(new Force(lineRecoil, angleRecoil, Quaternion.AngleAxis(20, Vector3.forward) * transform.right * -1));
-
 		//速度上限
 		if (rb2d.velocity.magnitude > maxVelocity) {
 			rb2d.velocity = rb2d.velocity / rb2d.velocity.magnitude * maxVelocity;
@@ -142,19 +158,24 @@ public class Player : MonoBehaviour {
 		{
 			rb2d.angularVelocity = -maxAngleVelocity;
 		}
+		//产生音效
+		transform.parent.SendMessage("AudioPlay",shootClip);
 		//发射子弹
 		bulletEmitter.EmitBullet(bulletType,Bullet);
 	}
 
 	//改变血量方法
-	private void ChangeHeart(int delta)
+	public void ChangeHeart(int delta)
 	{
 		//短时间无敌
 		if (shieldTimeVal < 0.1f && delta < 0)
 			return;
-		if (delta < 0)
+		if (delta < 0) {
 			shieldTimeVal = 0;
-
+			if (heart != 1) 
+				transform.parent.SendMessage("AudioPlay", underAttackClip);
+		}
+			
 		heart += delta;
 		if (heart == 0) {
 			//游戏结束
@@ -186,13 +207,13 @@ public class Player : MonoBehaviour {
 		{
 			case "BluePlayer":
 				bulletArray[(int)BulletType.small] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
-				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
+				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/Thunder");
 				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/BounceBullet");
 				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/FissionBullet");
 				break;
 			case "RedPlayer":
 				bulletArray[(int)BulletType.small] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
-				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
+				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Red/Thunder");
 				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Red/BounceBullet");
 				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Red/FissionBullet");
 				break;
@@ -252,8 +273,18 @@ public class Player : MonoBehaviour {
 		//爆炸效果
 		Instantiate(ExploPrefab, transform.position, transform.rotation);
 		Instantiate(ExploPrefabE, transform.position, transform.rotation);
+		//爆炸音效
+		transform.parent.SendMessage("AudioPlay", exploClip);
+		//游戏结束
+		GameMode.GameOver();
 		//销毁玩家
 		Destroy(gameObject);
 	}
+
+	private void OnCollisionEnter2D(Collision2D collision)
+	{
+		transform.parent.SendMessage("AudioPlay", impactClip);
+	}
+
 }
 
