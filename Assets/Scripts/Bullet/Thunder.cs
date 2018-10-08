@@ -35,7 +35,7 @@ public class Thunder : MonoBehaviour {
 				targetTag = "RedPlayer";
 				break;
 			case "RedBullet":
-				targetTag = "BluePayer";
+				targetTag = "BluePlayer";
 				break;
 		}
 		Attack();

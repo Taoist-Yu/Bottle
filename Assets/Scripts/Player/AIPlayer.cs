@@ -272,13 +272,13 @@ public class AIPlayer : MonoBehaviour {
 		{
 			case "BluePlayer":
 				bulletArray[(int)BulletType.small] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
-				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/SmallBullet");
+				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/Thunder");
 				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/BounceBullet");
 				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Blue/FissionBullet");
 				break;
 			case "RedPlayer":
 				bulletArray[(int)BulletType.small] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
-				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Red/SmallBullet");
+				bulletArray[(int)BulletType.Thunder] = (GameObject)Resources.Load("Prefabs/Bullet/Red/Thunder");
 				bulletArray[(int)BulletType.bounce] = (GameObject)Resources.Load("Prefabs/Bullet/Red/BounceBullet");
 				bulletArray[(int)BulletType.fission] = (GameObject)Resources.Load("Prefabs/Bullet/Red/FissionBullet");
 				break;
